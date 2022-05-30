@@ -13,7 +13,7 @@ async def on_ready():
     print('We have logged in as {0.user}'.format(bot))
 
 
-# автореакт
+# автореакт ideas
 @bot.event
 async def on_message(message):
     await bot.process_commands(message)
@@ -34,26 +34,32 @@ async def help_command(ctx: commands.context.Context):
     help_embed.set_author(name='Help')
     help_embed.add_field(name='clear', value='clear <кол-во> \nОчищает чат.', inline=False)
     help_embed.add_field(name='mute',
-                         value='mute <никнейм> <время(s/m/h)> <причина (не обязательно)>'
+                         value='mute <никнейм> <время(s/m/h)> <причина>'
                                '\nЗапрещает участнику писать в чат.',
                          inline=False)
     help_embed.add_field(name='unmute', value='unmute <никнейм> \nСнимает с участника мут.', inline=False)
-    help_embed.set_footer(text='Версия 1.1.2')
+    help_embed.set_footer(text='Версия 1.1.3')
     await ctx.send(embed=help_embed)
 
 
 # очистка чата
 @bot.command(name='clear')
 @commands.has_any_role(863450810645348362, 888860282976342096)
+@commands.cooldown(1, 10, commands.BucketType.user)
 async def clear_command(ctx: commands.context.Context, amount: int):
-    await ctx.message.delete()
-    clear_embed = discord.Embed(
-        title='_<:wNope:863417394920030208>_ **Значение аргумента не может быть меньше 1!**',
-        color=0xD11818)
-    amount_purged = await ctx.channel.purge(limit=amount)
-    if not amount > 0:
+    if amount > 100:
+        await ctx.message.delete()
+        clear_embed = discord.Embed(title='_<:wNope:863417394920030208>_ **Нельзя удалить больше 100 сообщений за раз!**',
+                                    color=0xD11818)
+        await ctx.send(embed=clear_embed, delete_after=5)
+    elif not amount > 0:
+        await ctx.message.delete()
+        clear_embed = discord.Embed(
+            title='_<:wNope:863417394920030208>_ **Значение аргумента не может быть меньше 1!**',
+            color=0xD11818)
         await ctx.send(embed=clear_embed, delete_after=5)
     else:
+        amount_purged = await ctx.channel.purge(limit=amount)
         clear_embed = discord.Embed(
             title=f'_<:wYep:863417394622103563>_ **Удалено {len(amount_purged)} сообщений!**',
             color=0x20D714)
@@ -62,16 +68,20 @@ async def clear_command(ctx: commands.context.Context, amount: int):
 
 # mute
 @bot.command(name='mute')
-@commands.has_any_role(863450810645348362, 888860282976342096)
-async def mute_command(ctx: commands.context, member: discord.Member, mute_time, reason='Без причины'):
+@commands.has_role(888860282976342096)
+async def mute_command(ctx: commands.context, member: discord.Member, mute_time, reason):
     mute_role = discord.utils.get(ctx.guild.roles, id=705885683566510140)
-    if not ctx.channel.id == 393868048475488256:
+    if not ctx.channel.id == 393868048475488256 or ctx.channel.id == 844150788053532712:
         await ctx.message.delete()
         mute_embed = discord.Embed(
             title='_<:wNope:863417394920030208>_ **Эту команду нельзя использовать здесь!**',
             color=0xD11818)
         await ctx.send(embed=mute_embed, delete_after=5)
-    if member.top_role >= ctx.author.top_role:
+    elif member.id == ctx.author.id:
+        mute_embed = discord.Embed(title='_<:wNope:863417394920030208>_ **Нельзя выдать мут самому себе!**',
+                                   color=0xD11818)
+        await ctx.send(embed=mute_embed, delete_after=5)
+    elif member.top_role >= ctx.author.top_role:
         await ctx.message.delete()
         mute_embed = discord.Embed(
             title='_<:wNope:863417394920030208>_ **Нельзя выдать мут участнику с такой же ролью, как у вас или выше!**',
@@ -95,11 +105,11 @@ async def mute_command(ctx: commands.context, member: discord.Member, mute_time,
             await member.add_roles(mute_role)
             await asyncio.sleep(time)
             await member.remove_roles(mute_role)
-        if end_time == 'm':
+        elif end_time == 'm':
             await member.add_roles(mute_role)
             await asyncio.sleep(time * 60)
             await member.remove_roles(mute_role)
-        if end_time == 'h':
+        elif end_time == 'h':
             await member.add_roles(mute_role)
             await asyncio.sleep(time * 3600)
             await member.remove_roles(mute_role)
@@ -109,13 +119,19 @@ async def mute_command(ctx: commands.context, member: discord.Member, mute_time,
 @bot.command(name='unmute')
 @commands.has_any_role(863450810645348362, 888860282976342096)
 async def un_mute(ctx: commands.context, member: discord.Member):
-    if not ctx.channel.id == 393868048475488256:
+    if not ctx.channel.id == 393868048475488256 or ctx.channel.id == 844150788053532712:
         await ctx.message.delete()
         mute_embed = discord.Embed(
             title='_<:wNope:863417394920030208>_ **Эту команду нельзя использовать здесь!**',
             color=0xD11818)
         await ctx.send(embed=mute_embed, delete_after=5)
+    elif member.id == ctx.author.id:
+        await ctx.message.delete()
+        mute_embed = discord.Embed(title='_<a:cKill:918173913874333766>_ **Нельзя снять мут с самого себя!**',
+                                   color=0xD11818)
+        await ctx.send(embed=mute_embed, delete_after=5)
     else:
+        await ctx.message.delete()
         mute_role = discord.utils.get(ctx.guild.roles, id=705885683566510140)
         await member.remove_roles(mute_role)
         unmute_embed = discord.Embed(title=f'_<:wYep:863417394622103563>_ **С {member} снят мут!**',
@@ -125,19 +141,24 @@ async def un_mute(ctx: commands.context, member: discord.Member):
 
 @bot.event
 async def on_command_error(ctx, error):
-    if isinstance(error, commands.MissingAnyRole):
+    if isinstance(error, commands.CommandOnCooldown):
+        error_embed = discord.Embed(title=':alarm_clock:  **Пока что нельзя использовать эту команду!**',
+                                    color=0xFFF404)
+        await ctx.message.delete()
+        await ctx.send(embed=error_embed, delete_after=5)
+    elif isinstance(error, commands.MissingAnyRole):
         await ctx.message.delete()
         error_embed = discord.Embed(
             title='_<:wNope:863417394920030208>_ **У вас недостаточно прав для выполнения команды!**',
             color=0xD11818)
         await ctx.send(embed=error_embed, delete_after=5)
-    if isinstance(error, commands.MissingRequiredArgument):
+    elif isinstance(error, commands.MissingRequiredArgument):
         error_embed = discord.Embed(
             title='_<:wNope:863417394920030208>_ **Не указаны необходимые аргументы!**',
             color=0xD11818)
         await ctx.message.delete()
         await ctx.send(embed=error_embed, delete_after=5)
-    if isinstance(error, commands.MemberNotFound):
+    elif isinstance(error, commands.MemberNotFound):
         error_embed = discord.Embed(
             title='_<:wNope:863417394920030208>_ **Этого участника нет на сервере!**',
             color=0xD11818)
@@ -145,15 +166,8 @@ async def on_command_error(ctx, error):
         await ctx.send(embed=error_embed, delete_after=5)
 
 
-@bot.command(name='say')
-@commands.has_permissions(administrator=True)
-async def say_command(ctx):
-    await ctx.message.delete()
-    await ctx.send('<a:animated:980423304621981747>')
-
-
 if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # token
-bot.run('...')
+bot.run('OTc3MjMyNzc0MDU2NTI5OTky.G48VWu.18UAuc6LTZ3VBDGBYLBulnv78ZaKFgwtOlIpDQ')
